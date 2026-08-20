@@ -1,5 +1,4 @@
-import "server-only";
-import { getActorById } from "./registry-server";
+import { getActorById } from "./registry";
 
 /**
  * Coerces string values in actor input that represent JSON arrays or objects
