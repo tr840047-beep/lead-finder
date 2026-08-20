@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { discoverCommand } from "./commands/discover";
 import { enrichCommand } from "./commands/enrich";
 import { statusCommand } from "./commands/status";
+import { nimbusCommand, nimbusScoreCommand } from "./commands/nimbus";
 
 const program = new Command();
 
@@ -15,5 +16,7 @@ program
 program.addCommand(discoverCommand);
 program.addCommand(enrichCommand);
 program.addCommand(statusCommand);
+program.addCommand(nimbusCommand);
+program.addCommand(nimbusScoreCommand);
 
 program.parse();
