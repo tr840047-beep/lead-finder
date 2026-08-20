@@ -1,4 +1,4 @@
-import { getActorById } from "./registry-server";
+import { getActorById } from "./registry";
 import type { NewLead } from "../db/schema";
 import { extractStaticFields } from "../ai/lead-extractor";
 import type { AIProvider } from "../ai/provider";
@@ -10,10 +10,6 @@ export interface NormalizeResult {
   outputTokens: number;
 }
 
-/**
- * Normalizes a single raw item into a lead record.
- * Uses AI to extract static fields (displayName, email, website, phone).
- */
 export async function normalizeSingleItem(
   actorId: string,
   item: Record<string, unknown>,
@@ -61,10 +57,6 @@ export async function normalizeSingleItem(
   return { lead, costUsd, inputTokens, outputTokens };
 }
 
-/**
- * Normalizes raw actor results into lead records (batch).
- * Stores rawData as-is and uses a small AI completion to extract static fields.
- */
 export async function normalizeActorResults(
   actorId: string,
   items: Record<string, unknown>[],
