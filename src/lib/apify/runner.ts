@@ -96,7 +96,8 @@ function parseApifyError(status: number, body: string): ApifyError {
 }
 
 function getToken(): string {
-  const token = process.env.APIFY_TOKEN;
+  const malformedKey = `APIFY${String.fromCharCode(92)}_TOKEN`;
+  const token = process.env.APIFY_TOKEN || process.env[malformedKey];
   if (!token) {
     throw new ApifyError(
       "Apify token is not configured. Please set APIFY_TOKEN in your .env file or on the Settings page.",
