@@ -35,7 +35,9 @@ function asText(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (Array.isArray(value)) return value.map(asText).join(" ");
-  if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).map(asText).join(" ");
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).map(asText).join(" ");
+  }
   return "";
 }
 
@@ -49,21 +51,36 @@ function flattenLeadData(data: Record<string, unknown>): string {
  */
 export function detectPublicWhatsApp(data: Record<string, unknown>): WhatsAppEvidence {
   const text = flattenLeadData(data);
-  const waLink = text.match(/https?:\\/\\/(?:api\\.)?whatsapp\\.com\\/(?:send\\?[^\\s"']+|[^\\s"']+)/i);
+
+  const waLink = text.match(/https?:\/\/(?:api\.)?whatsapp\.com\/(?:send\?[^\s"']+|[^\s"']+)/i);
   if (waLink) {
     const phone = waLink[0].match(/[?&](?:phone|number)=([+0-9][0-9\-(). ]{6,})/i)?.[1];
-    return { status: "verified_public", number: phone, url: waLink[0], source: "whatsapp_link" };
+    return {
+      status: "verified_public",
+      number: phone,
+      url: waLink[0],
+      source: "whatsapp_link",
+    };
   }
 
-  const waMe = text.match(/https?:\\/\\/wa\\.me\\/([0-9]{7,15})/i);
+  const waMe = text.match(/https?:\/\/wa\.me\/([0-9]{7,15})/i);
   if (waMe) {
-    return { status: "verified_public", number: `+${waMe[1]}`, url: waMe[0], source: "wa_me_link" };
+    return {
+      status: "verified_public",
+      number: `+${waMe[1]}`,
+      url: waMe[0],
+      source: "wa_me_link",
+    };
   }
 
-  const hasWhatsappWord = /\\bwhatsapp\\b/i.test(text);
-  const phone = text.match(/(?:\\+|00)[1-9][0-9]{7,14}/)?.[0];
+  const hasWhatsappWord = /\bwhatsapp\b/i.test(text);
+  const phone = text.match(/(?:\+|00)[1-9][0-9]{7,14}/)?.[0];
   if (hasWhatsappWord && phone) {
-    return { status: "public_phone_only", number: phone, source: "phone_only" };
+    return {
+      status: "public_phone_only",
+      number: phone,
+      source: "phone_only",
+    };
   }
 
   return { status: "not_found", source: "none" };
@@ -79,7 +96,7 @@ export function scoreNimbusRealEstateLead(data: Record<string, unknown>): Nimbus
     reasons.push("Real-estate business signal");
   }
 
-  const employees = text.match(/(?:employees|employee count|team size|staff)[^0-9]{0,20}(\\d{1,3})/i)?.[1];
+  const employees = text.match(/(?:employees|employee count|team size|staff)[^0-9]{0,20}(\d{1,3})/i)?.[1];
   if (employees) {
     const n = Number(employees);
     if (n >= 1 && n <= 10) {
@@ -117,12 +134,12 @@ export function scoreNimbusRealEstateLead(data: Record<string, unknown>): Nimbus
     reasons.push("Inbound inquiry/appointment signal");
   }
 
-  if (/24\\/7|always available|out of hours|after hours/.test(text)) {
+  if (/24\/7|always available|out of hours|after hours/.test(text)) {
     score += 10;
     reasons.push("After-hours coverage opportunity");
   }
 
-  if (/english|en\\b/.test(text)) {
+  if (/english|\ben\b/.test(text)) {
     score += 5;
     reasons.push("English-language signal");
   }
@@ -132,7 +149,9 @@ export function scoreNimbusRealEstateLead(data: Record<string, unknown>): Nimbus
   return { score, tier, reasons };
 }
 
-export function buildNimbusSearchQueries(countries = NIMBUS_EUROPEAN_REAL_ESTATE_COUNTRIES): string[] {
+export function buildNimbusSearchQueries(
+  countries = NIMBUS_EUROPEAN_REAL_ESTATE_COUNTRIES,
+): string[] {
   return countries.flatMap((country) =>
     NIMBUS_REAL_ESTATE_SEARCHES.map((term) => `${term} ${country}`),
   );
