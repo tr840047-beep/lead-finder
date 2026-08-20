@@ -1,17 +1,31 @@
 import { Command } from "commander";
-import { NIMBUS_EUROPEAN_REAL_ESTATE_COUNTRIES, buildNimbusSearchQueries, detectPublicWhatsApp, scoreNimbusRealEstateLead } from "../../src/lib/nimbus/prospecting";
+import {
+  NIMBUS_EUROPEAN_REAL_ESTATE_COUNTRIES,
+  buildNimbusSearchQueries,
+  detectPublicWhatsApp,
+  scoreNimbusRealEstateLead,
+} from "../../src/lib/nimbus/prospecting";
 
 export const nimbusCommand = new Command("nimbus")
-  .description("Nimbus AI prospecting helpers for small European real-estate businesses")
+  .description("Nimbus AI prospecting helpers for small European real-estate businesses");
+
+nimbusCommand
   .command("queries")
   .description("Print Google Maps/search queries for European real-estate prospecting")
-  .option("--countries <countries>", "Comma-separated countries", NIMBUS_EUROPEAN_REAL_ESTATE_COUNTRIES.join(","))
+  .option(
+    "--countries <countries>",
+    "Comma-separated countries",
+    NIMBUS_EUROPEAN_REAL_ESTATE_COUNTRIES.join(","),
+  )
   .action((opts) => {
     const countries = String(opts.countries)
       .split(",")
       .map((country) => country.trim())
       .filter(Boolean);
-    for (const query of buildNimbusSearchQueries(countries)) console.log(query);
+
+    for (const query of buildNimbusSearchQueries(countries)) {
+      console.log(query);
+    }
   });
 
 export const nimbusScoreCommand = new Command("nimbus-score")
@@ -25,6 +39,7 @@ export const nimbusScoreCommand = new Command("nimbus-score")
       console.error("Error: invalid JSON");
       process.exit(1);
     }
+
     const whatsapp = detectPublicWhatsApp(data);
     const scoring = scoreNimbusRealEstateLead(data);
     console.log(JSON.stringify({ ...scoring, whatsapp }, null, 2));
