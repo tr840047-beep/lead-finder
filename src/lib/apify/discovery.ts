@@ -4,8 +4,7 @@ import { eq } from "drizzle-orm";
 import { coerceActorInput } from "./coerce-input";
 import { runActorAndCollect, ApifyError } from "./runner";
 import { normalizeSingleItem } from "./normalizer";
-import { getActorById } from "./registry-server";
-import { enrichCampaignLeads } from "../enrichment/pipeline";
+import { getActorById } from "./registry";
 import { getDefaultAIProvider, type AIProvider } from "../ai/provider";
 import { leadEmitter } from "../events/emitter";
 
@@ -81,20 +80,20 @@ export async function runSingleActorDiscovery(
       continue;
     }
 
-    const inserted_row = db.insert(leads).values(lead).returning().get();
+    const insertedRow = db.insert(leads).values(lead).returning().get();
     inserted++;
 
     leadEmitter.emit("lead:discovered", {
-      leadId: inserted_row.id,
+      leadId: insertedRow.id,
       campaignId,
-      displayName: inserted_row.displayName,
-      email: inserted_row.email,
-      phone: inserted_row.phone,
-      website: inserted_row.website,
-      status: inserted_row.status,
-      rawData: inserted_row.rawData as Record<string, unknown> | null,
-      mappedData: inserted_row.mappedData as Record<string, unknown> | null,
-      createdAt: inserted_row.createdAt,
+      displayName: insertedRow.displayName,
+      email: insertedRow.email,
+      phone: insertedRow.phone,
+      website: insertedRow.website,
+      status: insertedRow.status,
+      rawData: insertedRow.rawData as Record<string, unknown> | null,
+      mappedData: insertedRow.mappedData as Record<string, unknown> | null,
+      createdAt: insertedRow.createdAt,
       source: actorId,
       index: i + 1,
       totalItems,
@@ -146,19 +145,15 @@ export async function runCampaignDiscovery(campaignId: number): Promise<Discover
 
   const actorIds = (campaign.apifyActors as string[]) || [];
   const actorConfigs = (campaign.actorConfigs as Record<string, Record<string, unknown>>) || {};
-
   const results: ActorRunResult[] = [];
 
-  leadEmitter.emit("campaign:discovery-started", {
-    campaignId,
-    actorIds,
-  });
+  leadEmitter.emit("campaign:discovery-started", { campaignId, actorIds });
 
   for (const actorId of actorIds) {
     const actor = getActorById(actorId);
     if (actor?.phase !== "find") continue;
 
-    const input = { ...actorConfigs[actorId] || {} };
+    const input = { ...(actorConfigs[actorId] || {}) };
 
     try {
       const result = await runSingleActorDiscovery(actorId, input, campaignId);
@@ -197,14 +192,15 @@ export async function runCampaignDiscovery(campaignId: number): Promise<Discover
     .where(eq(campaigns.id, campaignId))
     .run();
 
-  const totalInserted = totalInsertedSoFar;
+  const totalInserted = results.reduce((sum, r) => sum + r.inserted, 0);
 
   if (campaign.autoEnrich && totalInserted > 0) {
     try {
+      const { enrichCampaignLeads } = await import("../enrichment/pipeline");
       const enrichResult = await enrichCampaignLeads(
         campaignId,
         null,
-        campaign.aiProvider as AIProvider
+        campaign.aiProvider as AIProvider,
       );
       db.insert(analyticsEvents).values({
         eventType: "auto_enrichment_completed",
@@ -227,7 +223,7 @@ export async function runCampaignDiscovery(campaignId: number): Promise<Discover
       .run();
   }
 
-  const totalDeduplicated = results.reduce((s, r) => s + r.deduplicated, 0);
+  const totalDeduplicated = results.reduce((sum, r) => sum + r.deduplicated, 0);
 
   leadEmitter.emit("campaign:discovery-completed", {
     campaignId,
