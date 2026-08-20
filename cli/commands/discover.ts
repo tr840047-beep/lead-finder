@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { readFileSync } from "node:fs";
 import { getDb } from "../../src/lib/db";
 import { campaigns } from "../../src/lib/db/schema";
 import { runSingleActorDiscovery } from "../../src/lib/apify/discovery";
@@ -8,17 +9,27 @@ import { eq } from "drizzle-orm";
 export const discoverCommand = new Command("discover")
   .description("Discover leads using an Apify Actor")
   .requiredOption("--actor <actorId>", "Apify Actor ID (e.g., compass/crawler-google-places)")
-  .requiredOption("--input <json>", "Actor input as JSON string")
+  .option("--input <json>", "Actor input as JSON string")
+  .option("--input-file <path>", "Path to a JSON file containing actor input")
   .option("--campaign <name>", "Campaign name (creates new if not found)", "CLI Discovery")
   .option("--niche <niche>", "Target niche description", "General")
   .action(async (opts) => {
     const db = getDb();
 
+    if (!opts.input && !opts.inputFile) {
+      console.error("Error: provide either --input <json> or --input-file <path>");
+      process.exit(1);
+    }
+
     let input: Record<string, unknown>;
     try {
-      input = JSON.parse(opts.input);
-    } catch {
-      console.error("Error: Invalid JSON input");
+      const raw = opts.inputFile
+        ? readFileSync(String(opts.inputFile), "utf8")
+        : String(opts.input);
+      input = JSON.parse(raw);
+    } catch (err) {
+      console.error(`Error: Invalid JSON input${opts.inputFile ? ` file (${opts.inputFile})` : ""}`);
+      if (err instanceof Error) console.error(err.message);
       process.exit(1);
     }
 
